@@ -1,3 +1,5 @@
+
+
 import numpy as np
 from highway_env import utils
 from highway_env.envs.common.abstract import AbstractEnv
@@ -306,6 +308,13 @@ class CustomEnv(AbstractEnv):
     
     @staticmethod
     def _add_straight_highway_with_merging(road: RegulatedRoad, x_start, y_start) -> tuple[int, int]:
+        """
+        Generates a straight highway with a merging lane.
+
+        Note: The geometry and lane configuration logic is heavily inspired by 
+        and adapted from the open-source repository `highway-agent-401` by ece1508-ai-alchemist:
+        https://github.com/ece1508-ai-alchemist/highway-agent-401/blob/main/src/environments/highway401.py#L154
+        """
         net = road.network
         lane_start = [x_start, y_start]
         merging_line_vertical_distance = 15

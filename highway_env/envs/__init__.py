@@ -17,8 +17,8 @@ from highway_env.envs.roundabout_env import RoundaboutEnv
 from highway_env.envs.two_way_env import TwoWayEnv
 from highway_env.envs.u_turn_env import UTurnEnv
 
-from highway_env.envs.Custom import CustomEnv
-
+from highway_env.envs.CustomMerge import CustomMergeEnv
+from highway_env.envs.CustomIntersection import CustomIntersectionEnv
 
 __all__ = [
     "ExitEnv",

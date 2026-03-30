@@ -25,8 +25,13 @@ def _register_highway_envs():
     from highway_env.envs.common.abstract import MultiAgentWrapper
 
     register(
-        id="custom-env-v0",
-        entry_point="highway_env.envs.Custom:CustomEnv",
+        id="customMerge-env-v0",
+        entry_point="highway_env.envs.Custom:CustomMergeEnv",
+    )
+
+    register(
+        id="customIntersection-env-v0",
+        entry_point="highway_env.envs.CustomIntersection:CustomIntersectionEnv",
     )
 
     # exit_env.py

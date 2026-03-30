@@ -19,7 +19,7 @@ from highway_env.vehicle.objects import Obstacle
 
 
 
-class CustomEnv(AbstractEnv):
+class CustomMergeEnv(AbstractEnv):
 
     @classmethod
     def default_config(cls, num_agents = 3) -> dict:

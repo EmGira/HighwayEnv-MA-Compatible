@@ -137,10 +137,18 @@ class CustomIntersectionEnv(AbstractEnv):
         info = super()._info(obs, action)
 
         info["agents_rewards"] = tuple(
-            self._agent_reward(action, vehicle) for vehicle in self.controlled_vehicles
+            self._agent_reward(action[i], vehicle) for i, vehicle in enumerate(self.controlled_vehicles)
         )
         info["agents_terminated"] = tuple(
             self._agent_is_terminal(vehicle) for vehicle in self.controlled_vehicles
+        )
+
+        info["speed"] = tuple(
+            vehicle.speed for vehicle in self.controlled_vehicles
+        )
+
+        info["rewards"] = tuple(
+            self._agent_rewards(action[i], vehicle) for i, vehicle in enumerate(self.controlled_vehicles)
         )
 
         info["crashed"] = any(vehicle.crashed for vehicle in self.controlled_vehicles)
@@ -158,6 +166,7 @@ class CustomIntersectionEnv(AbstractEnv):
 
     def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict]:
         obs, reward, terminated, truncated, info = super().step(action)
+        
         self._clear_vehicles()
         self._spawn_vehicle(spawn_probability=self.config["spawn_probability"])
         return obs, reward, terminated, truncated, info
@@ -298,7 +307,7 @@ class CustomIntersectionEnv(AbstractEnv):
             ]
 
         # Challenger vehicle
-        self._spawn_vehicle(
+        self.challenger_vehicle = self._spawn_vehicle(
             60,
             spawn_probability=1.0,
             go_straight=True,
@@ -308,19 +317,21 @@ class CustomIntersectionEnv(AbstractEnv):
 
         # Controlled vehicles
         self.controlled_vehicles = []
+        spawn_counts = {}
         for ego_id in range(0, self.config["controlled_vehicles"]):
-            
             if self.config["spawn_points"] is not None:
                 spawn_points_list = self.config["spawn_points"]
-                ego_lane = self.road.network.get_lane(
-                    (f"o{spawn_points_list[ego_id % len(spawn_points_list)]}",
-                     f"ir{spawn_points_list[ego_id % len(spawn_points_list)]}",
-                     0)
-                )
+                lane_index = (f"o{spawn_points_list[ego_id % len(spawn_points_list)]}",
+                              f"ir{spawn_points_list[ego_id % len(spawn_points_list)]}",
+                              0)
             else:
-                ego_lane = self.road.network.get_lane(
-                    (f"o{ego_id % 4}", f"ir{ego_id % 4}", 0)
-                )
+                lane_index = (f"o{ego_id % 4}", f"ir{ego_id % 4}", 0)
+
+            ego_lane = self.road.network.get_lane(lane_index)
+
+            # Offset spawn position if multiple vehicles are in the same lane
+            spawn_counts[lane_index] = spawn_counts.get(lane_index, 0) + 1
+            longitudinal = 60.0 - (spawn_counts[lane_index] - 1) * 20
 
             if self.config["multi_destinations"] is not None:
                 dest_list = self.config["multi_destinations"]
@@ -332,9 +343,9 @@ class CustomIntersectionEnv(AbstractEnv):
 
             ego_vehicle = self.action_type.vehicle_class(
                 self.road,
-                ego_lane.position(60.0 + 5.0 * self.np_random.normal(1.0), 0.0),
+                ego_lane.position(longitudinal + 5.0 * self.np_random.normal(1.0), 0.0),
                 speed=ego_lane.speed_limit,
-                heading=ego_lane.heading_at(60.0),
+                heading=ego_lane.heading_at(longitudinal),
             )
             try:
                 ego_vehicle.plan_route_to(destination)
@@ -352,6 +363,8 @@ class CustomIntersectionEnv(AbstractEnv):
             for v in self.road.vehicles:  # Prevent early collisions
                 if (
                     v is not ego_vehicle
+                    and v not in self.controlled_vehicles
+                    and v is not self.challenger_vehicle
                     and np.linalg.norm(v.position - ego_vehicle.position) < 20
                 ):
                     self.road.vehicles.remove(v)
@@ -410,33 +423,33 @@ class CustomIntersectionEnv(AbstractEnv):
 
 #RENDERING 
 
-import pygame
-def _draw_destinations(self, surface) -> None:
-    """Disegna un indicatore sulla mappa per la destinazione di ogni Ego."""
-    if not self.viewer or self.viewer.get_surface() is None:
-        return
+    import pygame
+    def _draw_destinations(self, surface) -> None:
+        """Draws a indicator for each ego vehicle destination"""
+        if not self.viewer or self.viewer.agent_surface() is None:
+            return
 
-    for vehicle in self.controlled_vehicles:
-       
-        if hasattr(vehicle, "route") and vehicle.route:
-            last_edge = vehicle.route[-1] #('n1', 'n2', lane_index)
-            
-            lane = self.road.network.get_lane(last_edge)
-            
-            
-            dest_position = lane.position(lane.length, 0)
-            
-            
-            pixel_pos = self.viewer.world_to_pixel(dest_position)
-            
+        for vehicle in self.controlled_vehicles:
         
-            pygame.draw.circle(surface, (255, 0, 0), pixel_pos, 10, 3) # Rosso per la meta
+            if hasattr(vehicle, "route") and vehicle.route:
+                last_edge = vehicle.route[-1] #('n1', 'n2', lane_index)
+                
+                lane = self.road.network.get_lane(last_edge)
+                
+                
+                dest_position = lane.position(lane.length, 0)
+                
+                
+                pixel_pos = self.viewer.world_to_pixel(dest_position)
+                
+            
+                pygame.draw.circle(surface, (255, 0, 0), pixel_pos, 10, 3)
 
-def render(self, mode: str = 'human'):
-    surface = super().render(mode)
-    if mode == 'human':
-        self._draw_destinations(surface)
-    return surface
+    def render(self):
+        surface = super().render()
+        if self.render_mode == 'human':
+            self._draw_destinations(surface)
+        return surface
 
 
 

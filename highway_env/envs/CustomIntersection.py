@@ -283,7 +283,7 @@ class CustomIntersectionEnv(AbstractEnv):
 
     def _make_vehicles(self, n_vehicles: int = 10) -> None:
         """
-        Populate a road with several vehicles on the highway and on the merging lane
+        Populate a road with several vehicles on the Intersection Lanes
 
         :return: the ego-vehicle
         """
@@ -293,8 +293,10 @@ class CustomIntersectionEnv(AbstractEnv):
         vehicle_type.COMFORT_ACC_MAX = 6
         vehicle_type.COMFORT_ACC_MIN = -3
 
+        EGO_VEHICLE_SPEED_LIMIT = 6 #TODOO try making it configurable (ex, add set_speed_limit to the init)
+
         # Random vehicles
-        simulation_steps = 3
+        simulation_steps = 7  #changed from 3
         for t in range(n_vehicles - 1):
             self._spawn_vehicle(np.linspace(0, 80, n_vehicles)[t])
         for _ in range(simulation_steps):
@@ -319,6 +321,7 @@ class CustomIntersectionEnv(AbstractEnv):
         self.controlled_vehicles = []
         spawn_counts = {}
         for ego_id in range(0, self.config["controlled_vehicles"]):
+
             if self.config["spawn_points"] is not None:
                 spawn_points_list = self.config["spawn_points"]
                 lane_index = (f"o{spawn_points_list[ego_id % len(spawn_points_list)]}",
@@ -331,7 +334,7 @@ class CustomIntersectionEnv(AbstractEnv):
 
             # Offset spawn position if multiple vehicles are in the same lane
             spawn_counts[lane_index] = spawn_counts.get(lane_index, 0) + 1
-            longitudinal = 60.0 - (spawn_counts[lane_index] - 1) * 20
+            longitudinal = 40.0 - (spawn_counts[lane_index] - 1) * 20
 
             if self.config["multi_destinations"] is not None:
                 dest_list = self.config["multi_destinations"]
@@ -341,16 +344,17 @@ class CustomIntersectionEnv(AbstractEnv):
                     self.np_random.integers(1, 4)
                 )
 
+            
             ego_vehicle = self.action_type.vehicle_class(
                 self.road,
                 ego_lane.position(longitudinal + 5.0 * self.np_random.normal(1.0), 0.0),
-                speed=ego_lane.speed_limit,
+                speed= EGO_VEHICLE_SPEED_LIMIT,   #ego_lane.speed_limit,
                 heading=ego_lane.heading_at(longitudinal),
             )
             try:
                 ego_vehicle.plan_route_to(destination)
                 ego_vehicle.speed_index = ego_vehicle.speed_to_index(
-                    ego_lane.speed_limit
+                    EGO_VEHICLE_SPEED_LIMIT# ego_lane.speed_limit # TODOO set to 
                 )
                 ego_vehicle.target_speed = ego_vehicle.index_to_speed(
                     ego_vehicle.speed_index
@@ -423,32 +427,9 @@ class CustomIntersectionEnv(AbstractEnv):
 
 #RENDERING 
 
-    import pygame
-    def _draw_destinations(self, surface) -> None:
-        """Draws a indicator for each ego vehicle destination"""
-        if not self.viewer or self.viewer.agent_surface() is None:
-            return
-
-        for vehicle in self.controlled_vehicles:
-        
-            if hasattr(vehicle, "route") and vehicle.route:
-                last_edge = vehicle.route[-1] #('n1', 'n2', lane_index)
-                
-                lane = self.road.network.get_lane(last_edge)
-                
-                
-                dest_position = lane.position(lane.length, 0)
-                
-                
-                pixel_pos = self.viewer.world_to_pixel(dest_position)
-                
-            
-                pygame.draw.circle(surface, (255, 0, 0), pixel_pos, 10, 3)
 
     def render(self):
         surface = super().render()
-        if self.render_mode == 'human':
-            self._draw_destinations(surface)
         return surface
 
 

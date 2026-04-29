@@ -69,6 +69,11 @@ class CustomIntersectionEnv(AbstractEnv):
                 "reward_speed_range": [7.0, 9.0],
                 "normalize_reward": False,
                 "offroad_terminal": False,
+
+                "ego_vehicle_speed_limit": 9,
+                "initial_simulation_steps": 3,
+                "stopped_penalty": -0.1
+                
             }
         )
         return config
@@ -102,20 +107,49 @@ class CustomIntersectionEnv(AbstractEnv):
             reward = utils.lmap(
                 reward,
                 [self.config["collision_reward"], self.config["arrived_reward"]],
-                [0, 1],
+                [-1, 1],
             )
         return reward
 
     def _agent_rewards(self, action: int, vehicle: Vehicle) -> dict[str, float]:
         """Per-agent per-objective reward signal."""
+        stopped_signal = 0
+        speeding_signal = 0
+        tailgating_signal = 0
+
+        if vehicle.speed <= 0:
+            stopped_signal = 1.0 
+
+        #
+        if vehicle.speed > self.config["ego_vehicle_speed_limit"]:
+            speeding_signal = 1.0 
+
+
+        front_vehicle, rear_vehicle = self.road.neighbour_vehicles(vehicle, lane_index=vehicle.lane_index)
+        
+        if front_vehicle is not None:
+        
+                distance = np.linalg.norm(vehicle.position - front_vehicle.position)
+                
+                if distance < 15.0:
+                    relative_speed = vehicle.speed - front_vehicle.speed
+                    if relative_speed > 0: 
+                 
+                        danger_factor = (15.0 - distance) / 15.0 
+                        tailgating_signal = danger_factor
+
         scaled_speed = utils.lmap(
             vehicle.speed, self.config["reward_speed_range"], [0, 1]
         )
+
         return {
             "collision_reward": vehicle.crashed,
             "high_speed_reward": np.clip(scaled_speed, 0, 1),
             "arrived_reward": self.has_arrived(vehicle),
             "on_road_reward": vehicle.on_road,
+            "stopped_penalty": stopped_signal,
+            "speeding_penalty": speeding_signal,
+            "tailgating_penalty": tailgating_signal
         }
 
     def _is_terminated(self) -> bool:
@@ -293,10 +327,10 @@ class CustomIntersectionEnv(AbstractEnv):
         vehicle_type.COMFORT_ACC_MAX = 6
         vehicle_type.COMFORT_ACC_MIN = -3
 
-        EGO_VEHICLE_SPEED_LIMIT = 6 #TODOO try making it configurable (ex, add set_speed_limit to the init)
+        EGO_VEHICLE_SPEED_LIMIT = self.config["ego_vehicle_speed_limit"] 
 
         # Random vehicles
-        simulation_steps = 7  #changed from 3
+        simulation_steps = self.config["initial_simulation_steps"]  
         for t in range(n_vehicles - 1):
             self._spawn_vehicle(np.linspace(0, 80, n_vehicles)[t])
         for _ in range(simulation_steps):

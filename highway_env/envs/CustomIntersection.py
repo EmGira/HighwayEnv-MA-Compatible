@@ -39,7 +39,7 @@ class CustomIntersectionEnv(AbstractEnv):
                         "vx": [-20, 20],
                         "vy": [-20, 20],
                     },
-                    "absolute": True,
+                    "absolute": False,
                     "flatten": False,
                     "observe_intentions": False,
                 },
@@ -117,7 +117,7 @@ class CustomIntersectionEnv(AbstractEnv):
         speeding_signal = 0
         tailgating_signal = 0
 
-        if vehicle.speed <= 0:
+        if vehicle.speed < 0.01:
             stopped_signal = 1.0 
 
         #

@@ -34,6 +34,11 @@ def _register_highway_envs():
         entry_point="highway_env.envs.CustomIntersection:CustomIntersectionEnv",
     )
 
+    register(
+        id="customRoundabout-env-v0",
+        entry_point="highway_env.envs.CustomRoundabout:CustomRoundaboutEnv",
+    )
+
     # exit_env.py
     register(
         id="exit-v0",
